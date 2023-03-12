@@ -1,0 +1,11 @@
+{
+    "type": "MOD",
+    "name": "persistent_monoids",
+    "title": "persistent_monoids",
+    "license": "AGPL-3.0-or-later",
+    "media_license": "CC-BY-SA-4.0",
+    "repo": "https://github.com/fluxionary/minetest-persistent_monoids.git",
+    "website": "https://github.com/fluxionary/minetest-persistent_monoids",
+    "issue_tracker": "https://github.com/fluxionary/minetest-persistent_monoids/issues",
+    "short_description": "player_monoids that persist between player sessions and server restarts/crashes."
+}
