@@ -25,7 +25,11 @@ end
 
 function PersistentMonoid:_remember_ids(meta, ids)
 	local ids_key = self:_ids_key()
-	meta:set_string(ids_key, minetest.serialize(ids))
+	if futil.table.is_empty(ids) then
+		meta:set_string(ids_key, "")
+	else
+		meta:set_string(ids_key, minetest.serialize(ids))
+	end
 end
 
 function PersistentMonoid:_value_key(id)
@@ -62,9 +66,22 @@ function PersistentMonoid:add_change(player, value, id)
 	return id
 end
 
+function PersistentMonoid:add_ephemeral_change(player, value, id)
+	self:_forget_value(player, id)
+	return self._monoid:add_change(player, value, id)
+end
+
 function PersistentMonoid:del_change(player, id)
 	self._monoid:del_change(player, id)
 	self:_forget_value(player, id)
+end
+
+function PersistentMonoid:del_all(player)
+	local meta = player:get_meta()
+	for id, value in pairs(self:_get_ids(meta)) do
+		self._monoid:del_change(player, id)
+	end
+	self:_remember_ids(meta, {})
 end
 
 function PersistentMonoid:value(player)
