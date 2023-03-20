@@ -9,6 +9,7 @@ local PersistentMonoid = futil.class1()
 function PersistentMonoid:_init(name, def)
 	assert(name, "persistent monoids must specify a unique name")
 	assert(not monoids[name], "persistent monoids must specify a unique name. name is not unique.")
+	assert(def.fold)
 	monoids[name] = self
 	self._name = name
 	self._monoid = player_monoids.make_monoid(def)
