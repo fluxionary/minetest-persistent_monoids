@@ -24,49 +24,31 @@ function PersistentMonoid:_init(name, def)
 	self._monoid = player_monoids.make_monoid(monoid_def)
 end
 
-function PersistentMonoid:_ids_key()
-	return f("monoid_ids:%s", self._name)
+function PersistentMonoid:_key()
+	return f("persistent_monoids:%s", self._name)
 end
 
-function PersistentMonoid:_get_ids(meta)
-	local ids_key = self:_ids_key()
-	return minetest.deserialize(meta:get(ids_key)) or {}
+function PersistentMonoid:_get_values(meta)
+	local key = self:_key()
+	return minetest.deserialize(meta:get(key)) or {}
 end
 
-function PersistentMonoid:_remember_ids(meta, ids)
-	local ids_key = self:_ids_key()
-	if futil.table.is_empty(ids) then
-		meta:set_string(ids_key, "")
+function PersistentMonoid:_set_values(meta, values)
+	local key = self:_key()
+	if futil.table.is_empty(values) then
+		meta:set_string(key, "")
 	else
-		meta:set_string(ids_key, minetest.serialize(ids))
+		meta:set_string(key, minetest.serialize(values))
 	end
-end
-
-function PersistentMonoid:_value_key(id)
-	return f("monoid_value:%s:%s", self._name, id)
-end
-
-function PersistentMonoid:_get_value(meta, id)
-	local value_key = self:_value_key(id)
-	return minetest.deserialize(meta:get(value_key))
 end
 
 function PersistentMonoid:_remember_value(player, id, value)
 	local meta = player:get_meta()
-	local value_key = self:_value_key(id)
-	meta:set_string(value_key, minetest.serialize(value))
-	local ids = self:_get_ids(meta)
-	ids[id] = true
-	self:_remember_ids(meta, ids)
-end
-
-function PersistentMonoid:_forget_value(player, id)
-	local meta = player:get_meta()
-	local value_key = self:_value_key(id)
-	meta:set_string(value_key, "")
-	local ids = self:_get_ids(meta)
-	ids[id] = nil
-	self:_remember_ids(meta, ids)
+	local values = self:_get_values(meta)
+	if values[id] ~= value then
+		values[id] = value
+		self:_set_values(meta, values)
+	end
 end
 
 function PersistentMonoid:add_change(player, value, id)
@@ -77,33 +59,40 @@ function PersistentMonoid:add_change(player, value, id)
 end
 
 function PersistentMonoid:add_ephemeral_change(player, value, id)
-	self:_forget_value(player, id)
+	self:_remember_value(player, id, nil)
 	return self._monoid:add_change(player, value, id)
 end
 
 function PersistentMonoid:del_change(player, id)
+	self:_remember_value(player, id, nil)
 	self._monoid:del_change(player, id)
-	self:_forget_value(player, id)
 end
 
 function PersistentMonoid:del_all(player)
 	local meta = player:get_meta()
-	for id, value in pairs(self:_get_ids(meta)) do
+	for id in pairs(self._monoid.player_map[player:get_player_name()] or {}) do
 		self._monoid:del_change(player, id)
 	end
-	self:_remember_ids(meta, {})
+	self:_remember_values(meta, {})
 end
 
-function PersistentMonoid:value(player)
-	return self._monoid:value(player)
+function PersistentMonoid:value(player, key)
+	if key then
+		return (self._monoid.player_map[player:get_player_name()] or {})[key]
+	else
+		return self._monoid:value(player)
+	end
+end
+
+function PersistentMonoid:values(player)
+	return table.copy(self._monoid.player_map[player:get_player_name()] or {})
 end
 
 minetest.register_on_joinplayer(function(player)
 	local meta = player:get_meta()
 	for _, monoid in pairs(monoids) do
-		local ids = monoid:_get_ids(meta)
-		for id in pairs(ids) do
-			local value = monoid:_get_value(meta, id)
+		local values = monoid:_get_values(meta)
+		for id, value in pairs(values) do
 			monoid._monoid:add_change(player, value, id)
 		end
 	end
