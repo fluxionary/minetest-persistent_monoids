@@ -42,38 +42,41 @@ function PersistentMonoid:_set_values(meta, values)
 	end
 end
 
-function PersistentMonoid:_remember_value(player, id, value)
+function PersistentMonoid:_remember_value(player, key, value)
 	local meta = player:get_meta()
 	local values = self:_get_values(meta)
-	if values[id] ~= value then
-		values[id] = value
+	if values[key] ~= value then
+		values[key] = value
 		self:_set_values(meta, values)
 	end
 end
 
-function PersistentMonoid:add_change(player, value, id)
-	assert(id, "changes to persistent monoids must specify an ID")
-	self._monoid:add_change(player, value, id)
-	self:_remember_value(player, id, value)
-	return id
+function PersistentMonoid:add_change(player, value, key)
+	assert(key, "changes to persistent monoids must specify an ID")
+	self._monoid:add_change(player, value, key)
+	self:_remember_value(player, key, value)
+	return self._monoid:value(player)
 end
 
-function PersistentMonoid:add_ephemeral_change(player, value, id)
-	self:_remember_value(player, id, nil)
-	return self._monoid:add_change(player, value, id)
+function PersistentMonoid:add_ephemeral_change(player, value, key)
+	self:_remember_value(player, key, nil)
+	self._monoid:add_change(player, value, key)
+	return self._monoid:value(player)
 end
 
-function PersistentMonoid:del_change(player, id)
-	self:_remember_value(player, id, nil)
-	self._monoid:del_change(player, id)
+function PersistentMonoid:del_change(player, key)
+	self:_remember_value(player, key, nil)
+	self._monoid:del_change(player, key)
+	return self._monoid:value(player)
 end
 
 function PersistentMonoid:del_all(player)
 	local meta = player:get_meta()
-	for id in pairs(self._monoid.player_map[player:get_player_name()] or {}) do
-		self._monoid:del_change(player, id)
+	for key in pairs(self._monoid.player_map[player:get_player_name()] or {}) do
+		self._monoid:del_change(player, key)
 	end
 	self:_remember_values(meta, {})
+	return self._monoid:value(player)
 end
 
 function PersistentMonoid:value(player, key)
@@ -92,8 +95,8 @@ minetest.register_on_joinplayer(function(player)
 	local meta = player:get_meta()
 	for _, monoid in pairs(monoids) do
 		local values = monoid:_get_values(meta)
-		for id, value in pairs(values) do
-			monoid._monoid:add_change(player, value, id)
+		for key, value in pairs(values) do
+			monoid._monoid:add_change(player, value, key)
 		end
 	end
 end)
