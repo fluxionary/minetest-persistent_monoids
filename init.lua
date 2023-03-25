@@ -30,7 +30,7 @@ end
 
 function PersistentMonoid:_get_values(meta)
 	local key = self:_key()
-	return minetest.deserialize(meta:get(key)) or {}
+	return minetest.deserialize(meta:get_string(key)) or {}
 end
 
 function PersistentMonoid:_set_values(meta, values)
